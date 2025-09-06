@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { webhookPriceDataSchema } from "@/lib/validations"
+import { Prisma } from "@/generated/prisma"
 
 // API Key authentication middleware
 function validateApiKey(request: NextRequest) {
@@ -57,7 +58,7 @@ export async function POST(request: NextRequest) {
       price: price.price,
       currency: price.currency,
       available: price.available,
-      metadata: validatedData.metadata as Record<string, unknown>,
+      metadata: validatedData.metadata as Prisma.InputJsonValue,
       source: validatedData.source,
     }))
 

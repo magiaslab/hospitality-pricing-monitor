@@ -16,10 +16,8 @@ import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { 
   Building2, 
-  MapPin, 
   Palette, 
   Settings, 
-  Users, 
   ChevronLeft, 
   ChevronRight, 
   Check,
