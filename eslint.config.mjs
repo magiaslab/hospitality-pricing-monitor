@@ -20,6 +20,8 @@ const eslintConfig = [
       "next-env.d.ts",
       "prisma/generated/**",
       ".prisma/**",
+      "src/generated/**",
+      "**/generated/**",
     ],
   },
   {
@@ -29,6 +31,11 @@ const eslintConfig = [
       "@typescript-eslint/no-require-imports": "warn",
       "@typescript-eslint/no-unused-vars": "warn",
       "@typescript-eslint/no-empty-object-type": "warn",
+      "@typescript-eslint/no-this-alias": "warn",
+      "@typescript-eslint/no-unsafe-function-type": "warn",
+      "@typescript-eslint/no-unnecessary-type-constraint": "warn",
+      "@typescript-eslint/no-wrapper-object-types": "warn",
+      "@typescript-eslint/no-unused-expressions": "warn",
     },
   },
 ];

@@ -68,7 +68,7 @@ export async function POST(request: NextRequest) {
       price: price.price,
       currency: price.currency,
       available: price.available,
-      metadata: validatedData.metadata,
+      metadata: validatedData.metadata as Record<string, unknown>,
       source: validatedData.source,
     }))
 
@@ -121,16 +121,21 @@ export async function POST(request: NextRequest) {
     console.error("Save price webhook error:", error)
 
     // Log dell'errore se abbiamo almeno propertyId
-    if (typeof error === "object" && error !== null && "propertyId" in error) {
-      await prisma.scrapeEvent.create({
-        data: {
-          propertyId: (error as any).propertyId,
-          competitorId: (error as any).competitorId,
-          status: "ERROR",
-          message: error instanceof Error ? error.message : "Unknown error",
-          payload: error,
-        }
-      }).catch(console.error)
+    try {
+      const body = await request.json().catch(() => null)
+      if (body && typeof body === "object" && body !== null && "propertyId" in body) {
+        await prisma.scrapeEvent.create({
+          data: {
+            propertyId: body.propertyId as string,
+            competitorId: (body as Record<string, unknown>).competitorId as string | undefined,
+            status: "ERROR",
+            message: error instanceof Error ? error.message : "Unknown error",
+            payload: body as Record<string, unknown>,
+          }
+        }).catch(console.error)
+      }
+    } catch {
+      // Ignore error logging failures
     }
     
     if (error instanceof Error && error.name === "ZodError") {
