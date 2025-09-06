@@ -1,3 +1,6 @@
+// Alias per compatibilità con n8n workflow
+// Redirige al webhook principale mantenendo la stessa logica
+
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
 import { webhookPriceDataSchema } from "@/lib/validations"
@@ -28,7 +31,7 @@ export async function POST(request: NextRequest) {
     // Verifica webhook secret se configurato
     const webhookSecret = request.headers.get("x-webhook-secret")
     if (process.env.N8N_WEBHOOK_SECRET && webhookSecret !== process.env.N8N_WEBHOOK_SECRET) {
-      return NextResponse.json({ error: "Webhook secret non valido" }, { status: 401 })
+      return NextResponse.json({ error: "Invalid webhook secret" }, { status: 401 })
     }
 
     const body = await request.json()
@@ -43,7 +46,15 @@ export async function POST(request: NextRequest) {
 
     if (!property || !competitor || !roomType) {
       return NextResponse.json(
-        { error: "Property, competitor o room type non trovati" },
+        { 
+          success: false,
+          error: "Property, competitor or room type not found",
+          details: {
+            propertyFound: !!property,
+            competitorFound: !!competitor,
+            roomTypeFound: !!roomType,
+          }
+        },
         { status: 400 }
       )
     }
@@ -73,18 +84,42 @@ export async function POST(request: NextRequest) {
         propertyId: validatedData.propertyId,
         competitorId: validatedData.competitorId,
         status: "SUCCESS",
-        message: `Inseriti ${result.count} prezzi`,
+        message: `Saved ${result.count} prices via n8n webhook`,
         payload: validatedData,
-        source: validatedData.source,
+        source: validatedData.source || "n8n-webhook",
       }
     })
 
+    // Check for price alerts (simplified logic)
+    const alertTriggered = false // TODO: Implement alert logic based on price changes
+
     return NextResponse.json({
-      message: "Dati ricevuti con successo",
-      inserted: result.count,
+      success: true,
+      message: "Price data saved successfully",
+      statistics: {
+        pricesReceived: validatedData.prices.length,
+        pricesSaved: result.count,
+        duplicatesSkipped: validatedData.prices.length - result.count,
+      },
+      property: {
+        id: property.id,
+        name: property.name,
+      },
+      competitor: {
+        id: competitor.id,
+        name: competitor.name,
+      },
+      roomType: {
+        id: roomType.id,
+        name: roomType.name,
+      },
+      alert_triggered: alertTriggered,
+      owner_email: null, // TODO: Get from property owner
+      timestamp: new Date().toISOString(),
     })
+
   } catch (error) {
-    console.error("Webhook error:", error)
+    console.error("Save price webhook error:", error)
 
     // Log dell'errore se abbiamo almeno propertyId
     if (typeof error === "object" && error !== null && "propertyId" in error) {
@@ -93,7 +128,7 @@ export async function POST(request: NextRequest) {
           propertyId: (error as any).propertyId,
           competitorId: (error as any).competitorId,
           status: "ERROR",
-          message: error instanceof Error ? error.message : "Errore sconosciuto",
+          message: error instanceof Error ? error.message : "Unknown error",
           payload: error,
         }
       }).catch(console.error)
@@ -101,13 +136,22 @@ export async function POST(request: NextRequest) {
     
     if (error instanceof Error && error.name === "ZodError") {
       return NextResponse.json(
-        { error: "Dati webhook non validi", details: error.message },
+        { 
+          success: false,
+          error: "Invalid webhook data",
+          details: error.message,
+          timestamp: new Date().toISOString(),
+        },
         { status: 400 }
       )
     }
 
     return NextResponse.json(
-      { error: "Errore interno del server" },
+      { 
+        success: false,
+        error: "Internal server error",
+        timestamp: new Date().toISOString(),
+      },
       { status: 500 }
     )
   }
