@@ -16,7 +16,7 @@ function validateApiKey(request: NextRequest) {
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     // Validate API key
@@ -27,7 +27,7 @@ export async function GET(
       )
     }
 
-    const propertyId = params.id
+    const { id: propertyId } = await params
     const { searchParams } = new URL(request.url)
     const activeOnly = searchParams.get("active") === "true"
     const includeConfig = searchParams.get("include_config") === "true"
@@ -99,16 +99,16 @@ export async function GET(
       directUrl: !competitor.baseUrl.includes("booking.com") && !competitor.baseUrl.includes("airbnb.com") ? competitor.baseUrl : null,
       
       // Scraping configurations if requested
-      ...(includeConfig && {
-        configs: competitor.configs?.map(config => ({
+      ...(includeConfig && competitor.configs && {
+        configs: competitor.configs.map(config => ({
           id: config.id,
-          roomType: config.roomType,
+          roomType: 'roomType' in config ? config.roomType : undefined,
           priceSelector: config.priceSelector,
           dateSelector: config.dateSelector,
           currencySelector: config.currencySelector,
           availabilitySelector: config.availabilitySelector,
           notes: config.notes,
-        })) || []
+        }))
       }),
       
       // Statistics

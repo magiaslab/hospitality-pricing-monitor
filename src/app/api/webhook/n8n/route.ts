@@ -64,7 +64,6 @@ export async function POST(request: NextRequest) {
     // Batch insert per performance
     const result = await prisma.priceHistory.createMany({
       data: priceHistoryData,
-      skipDuplicates: true, // Evita errori su duplicati
     })
 
     // Log dell'evento di scraping

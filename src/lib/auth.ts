@@ -7,7 +7,7 @@ import { prisma } from "@/lib/prisma"
 import { UserRole } from "@/generated/prisma"
 
 export const authOptions: NextAuthOptions = {
-  adapter: PrismaAdapter(prisma),
+  adapter: PrismaAdapter(prisma) as any,
   providers: [
     GoogleProvider({
       clientId: process.env.GOOGLE_CLIENT_ID!,
@@ -104,7 +104,6 @@ export const authOptions: NextAuthOptions = {
   },
   pages: {
     signIn: "/auth/signin",
-    signUp: "/auth/signup",
   },
   secret: process.env.NEXTAUTH_SECRET,
 }

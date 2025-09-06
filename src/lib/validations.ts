@@ -109,7 +109,7 @@ export const createPriceHistorySchema = z.object({
   price: z.number().min(0, "Prezzo deve essere positivo"),
   currency: z.string().default("EUR"),
   available: z.boolean().default(true),
-  metadata: z.record(z.any()).optional(),
+  metadata: z.record(z.string(), z.any()).optional(),
   source: z.string().optional(),
 })
 
@@ -124,7 +124,7 @@ export const webhookPriceDataSchema = z.object({
     currency: z.string().default("EUR"),
     available: z.boolean().default(true),
   })),
-  metadata: z.record(z.any()).optional(),
+  metadata: z.record(z.string(), z.any()).optional(),
   source: z.string().optional(),
 })
 

@@ -30,7 +30,7 @@ const executionLogSchema = z.object({
   })).optional(),
   
   // Metadata
-  metadata: z.record(z.any()).optional(),
+  metadata: z.record(z.string(), z.any()).optional(),
   source: z.string().default("n8n-workflow"),
 })
 
@@ -120,7 +120,6 @@ export async function POST(request: NextRequest) {
       if (errorLogs.length > 0) {
         await prisma.scrapeEvent.createMany({
           data: errorLogs,
-          skipDuplicates: true,
         })
       }
     }

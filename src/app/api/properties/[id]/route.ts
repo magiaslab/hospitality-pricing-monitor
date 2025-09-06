@@ -7,7 +7,7 @@ import { canManageProperty, canViewProperty } from "@/lib/permissions"
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions)
@@ -15,7 +15,7 @@ export async function GET(
       return NextResponse.json({ error: "Non autorizzato" }, { status: 401 })
     }
 
-    const propertyId = params.id
+    const { id: propertyId } = await params
 
     // Verifica accesso alla property
     const hasAccess = await canViewProperty(session.user.id, propertyId)
@@ -74,7 +74,7 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions)
@@ -82,7 +82,7 @@ export async function PUT(
       return NextResponse.json({ error: "Non autorizzato" }, { status: 401 })
     }
 
-    const propertyId = params.id
+    const { id: propertyId } = await params
 
     // Verifica permessi di modifica
     const canManage = await canManageProperty(session.user.id, propertyId)
@@ -162,7 +162,7 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions)
@@ -170,7 +170,7 @@ export async function DELETE(
       return NextResponse.json({ error: "Non autorizzato" }, { status: 401 })
     }
 
-    const propertyId = params.id
+    const { id: propertyId } = await params
 
     // Verifica permessi di modifica
     const canManage = await canManageProperty(session.user.id, propertyId)
