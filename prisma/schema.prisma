@@ -1,0 +1,356 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// -----------------------------
+// Enums
+// -----------------------------
+
+enum UserRole {
+  SUPER_ADMIN
+  ADMIN
+  OWNER
+  VIEWER
+}
+
+enum AccessLevel {
+  ADMIN
+  OWNER
+  VIEWER
+}
+
+enum AlertDirection {
+  UP
+  DOWN
+}
+
+enum NotificationChannel {
+  EMAIL
+  SLACK
+}
+
+// -----------------------------
+// Core Models
+// -----------------------------
+
+model User {
+  id                 String               @id @default(cuid())
+  email              String               @unique
+  name               String?
+  image              String?
+  password           String?              // Per autenticazione credenziali
+  role               UserRole             @default(VIEWER)
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
+
+  // Ownership
+  ownedProperties    Property[]           @relation("OwnerProperties")
+
+  // Access to properties via ACL
+  propertyAccesses   PropertyAccess[]
+
+  // Access grants performed by this user
+  grantedPropertyAccesses PropertyAccess[] @relation("GrantedByUser")
+
+  // NextAuth relations
+  accounts           Account[]
+  sessions           Session[]
+
+  // Invitations sent
+  sentInvitations    UserInvitation[]     @relation("InvitedByUser")
+
+  // Audit logs
+  auditLogs          AuditLog[]
+
+  // Dashboard preferences
+  dashboardConfigs   DashboardConfig[]
+}
+
+model Property {
+  id                   String               @id @default(cuid())
+  name                 String
+  city                 String?
+  country              String?
+  address              String?
+  propertyType         String?              // es. Hotel, B&B, Apartment
+
+  // Owner of the property (main owner)
+  ownerId              String
+  owner                User                 @relation("OwnerProperties", fields: [ownerId], references: [id])
+
+  // Branding & config
+  brandingLogoUrl      String?
+  brandingPrimaryColor String?              // es. #ef4444 per tema rosso
+  brandingAccentColor  String?
+  theme                String?              // light | dark | system
+
+  // n8n integration per property (default workflow for property-wide scraping)
+  n8nWorkflowId        String?
+  n8nWebhookUrl        String?
+  n8nWebhookSecret     String?
+
+  // Default scraping configuration
+  defaultTimezone      String?              // es. Europe/Rome
+  defaultFrequencyCron String?              // es. 0 */2 * * *
+  defaultLookaheadDays Int?                 // giorni futuri da monitorare
+
+  createdAt            DateTime             @default(now())
+  updatedAt            DateTime             @updatedAt
+
+  // Relations
+  roomTypes            RoomType[]
+  competitors          Competitor[]
+  priceHistory         PriceHistory[]
+  propertyAccesses     PropertyAccess[]
+  alerts               AlertRule[]
+  dashboardConfigs     DashboardConfig[]
+  scrapeEvents         ScrapeEvent[]
+  invitations          UserInvitation[]
+}
+
+model RoomType {
+  id          String     @id @default(cuid())
+  propertyId  String
+  property    Property   @relation(fields: [propertyId], references: [id])
+  name        String
+  code        String?
+  capacity    Int?
+  active      Boolean    @default(true)
+
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  competitorConfigs CompetitorConfig[]
+  priceHistory      PriceHistory[]
+  alertRules        AlertRule[]
+
+  @@unique([propertyId, name])
+  @@index([propertyId])
+}
+
+model Competitor {
+  id                   String             @id @default(cuid())
+  propertyId           String
+  property             Property           @relation(fields: [propertyId], references: [id])
+  name                 String
+  baseUrl              String             // URL principale competitor
+  active               Boolean            @default(true)
+
+  // Optional per-integration workflow on n8n specific to the competitor
+  n8nWorkflowId        String?
+  n8nWebhookUrl        String?
+
+  // Scraping overrides (se diverso da defaults della property)
+  frequencyCron        String?
+  timezone             String?
+
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+
+  // Relations
+  configs              CompetitorConfig[]
+  priceHistory         PriceHistory[]
+  alerts               AlertRule[]
+  scrapeEvents         ScrapeEvent[]
+
+  @@index([propertyId])
+}
+
+// Configurazioni per selettori per singola combinazione Competitor x RoomType
+model CompetitorConfig {
+  id                    String      @id @default(cuid())
+  competitorId          String
+  competitor            Competitor  @relation(fields: [competitorId], references: [id])
+  roomTypeId            String
+  roomType              RoomType    @relation(fields: [roomTypeId], references: [id])
+
+  priceSelector         String?     // CSS selector per prezzo
+  dateSelector          String?     // CSS selector per date
+  currencySelector      String?     // CSS selector per valuta
+  availabilitySelector  String?     // CSS selector per disponibilita'
+  notes                 String?
+
+  createdAt             DateTime    @default(now())
+  updatedAt             DateTime    @updatedAt
+
+  @@unique([competitorId, roomTypeId])
+  @@index([roomTypeId])
+}
+
+model PriceHistory {
+  id             String      @id @default(cuid())
+  propertyId     String
+  property       Property    @relation(fields: [propertyId], references: [id])
+  competitorId   String
+  competitor     Competitor  @relation(fields: [competitorId], references: [id])
+  roomTypeId     String
+  roomType       RoomType    @relation(fields: [roomTypeId], references: [id])
+
+  targetDate     DateTime    // data per cui e' valido il prezzo (giorno del soggiorno)
+  fetchedAt      DateTime    @default(now())
+  price          Decimal
+  currency       String      @default("EUR")
+  available      Boolean     @default(true)
+
+  // Per debug e tracciabilita'
+  metadata       Json?
+  source         String?     // es. nome workflow n8n o job-id
+
+  @@index([propertyId, targetDate])
+  @@index([competitorId, targetDate])
+  @@index([roomTypeId, targetDate])
+  @@index([propertyId, competitorId, roomTypeId, targetDate])
+}
+
+// ACL per accesso a singole properties da parte degli utenti
+model PropertyAccess {
+  id          String      @id @default(cuid())
+  userId      String
+  user        User        @relation(fields: [userId], references: [id])
+  propertyId  String
+  property    Property    @relation(fields: [propertyId], references: [id])
+  level       AccessLevel @default(VIEWER)
+  createdAt   DateTime    @default(now())
+  grantedById String?
+  grantedBy   User?       @relation("GrantedByUser", fields: [grantedById], references: [id])
+
+  @@unique([userId, propertyId])
+  @@index([propertyId])
+  @@index([userId])
+}
+
+// Sistema inviti per onboarding utenti
+model UserInvitation {
+  id           String     @id @default(cuid())
+  email        String
+  role         UserRole   @default(VIEWER)
+  propertyId   String?
+  property     Property?  @relation(fields: [propertyId], references: [id])
+  token        String     @unique
+  expiresAt    DateTime
+  acceptedAt   DateTime?
+  invitedById  String
+  invitedBy    User       @relation("InvitedByUser", fields: [invitedById], references: [id])
+  createdAt    DateTime   @default(now())
+
+  @@index([email])
+}
+
+// Configurazioni dashboard per utente, opzionalmente scoperte su una property
+model DashboardConfig {
+  id          String     @id @default(cuid())
+  userId      String
+  user        User       @relation(fields: [userId], references: [id])
+  propertyId  String?
+  property    Property?  @relation(fields: [propertyId], references: [id])
+  config      Json       // layout, filtri, preferenze
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  @@index([userId])
+  @@index([propertyId])
+}
+
+// Log attivita' utente per audit trail
+model AuditLog {
+  id          String    @id @default(cuid())
+  userId      String?
+  user        User?     @relation(fields: [userId], references: [id])
+  action      String    // es. PROPERTY_CREATE, COMPETITOR_UPDATE, etc
+  targetType  String    // es. Property, Competitor, PriceHistory
+  targetId    String?
+  ip          String?
+  userAgent   String?
+  metadata    Json?
+  createdAt   DateTime  @default(now())
+
+  @@index([userId, createdAt])
+}
+
+// Eventi di scraping ricevuti (grezzo) per troubleshooting/health
+model ScrapeEvent {
+  id            String      @id @default(cuid())
+  propertyId    String
+  property      Property    @relation(fields: [propertyId], references: [id])
+  competitorId  String?
+  competitor    Competitor? @relation(fields: [competitorId], references: [id])
+  receivedAt    DateTime    @default(now())
+  status        String      // es. SUCCESS, ERROR
+  message       String?
+  payload       Json?
+  source        String?     // es. n8n workflow id
+
+  @@index([propertyId, receivedAt])
+  @@index([competitorId, receivedAt])
+}
+
+// Regole di alert per variazioni prezzo
+model AlertRule {
+  id              String               @id @default(cuid())
+  propertyId      String
+  property        Property             @relation(fields: [propertyId], references: [id])
+  roomTypeId      String?
+  roomType        RoomType?            @relation(fields: [roomTypeId], references: [id])
+  competitorId    String?
+  competitor      Competitor?          @relation(fields: [competitorId], references: [id])
+  direction       AlertDirection       @default(DOWN)
+  thresholdPct    Float                // variazione percentuale per trigger
+  active          Boolean              @default(true)
+  channels        NotificationChannel[]
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @updatedAt
+
+  @@index([propertyId])
+  @@index([roomTypeId])
+  @@index([competitorId])
+}
+
+// -----------------------------
+// NextAuth standard models
+// -----------------------------
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  user              User    @relation(fields: [userId], references: [id])
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  user         User     @relation(fields: [userId], references: [id])
+  expires      DateTime
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
