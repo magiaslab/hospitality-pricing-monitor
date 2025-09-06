@@ -167,7 +167,7 @@ export function PropertyWizard({ users }: PropertyWizardProps) {
     setRoomTypes(roomTypes.filter((_, i) => i !== index))
   }
 
-  const updateRoomType = (index: number, field: string, value: any) => {
+  const updateRoomType = (index: number, field: string, value: string | number | boolean) => {
     const updated = [...roomTypes]
     updated[index] = { ...updated[index], [field]: value }
     setRoomTypes(updated)
@@ -491,7 +491,7 @@ export function PropertyWizard({ users }: PropertyWizardProps) {
                     <div className="text-center py-8 text-muted-foreground">
                       <Building2 className="w-12 h-12 mx-auto mb-4 opacity-50" />
                       <p>Nessuna tipologia camera configurata</p>
-                      <p className="text-sm">Clicca "Aggiungi" per iniziare</p>
+                      <p className="text-sm">Clicca &quot;Aggiungi&quot; per iniziare</p>
                     </div>
                   ) : (
                     <div className="space-y-4">
