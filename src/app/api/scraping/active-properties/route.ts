@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
     const properties = await prisma.property.findMany({
       where: {
         // Filter by status and scraping enabled
-        ...(status !== "all" && { status: status as any }),
+        ...(status !== "all" && { status }),
         ...(scrapingEnabled && { scrapingEnabled: true }),
         competitors: {
           some: {

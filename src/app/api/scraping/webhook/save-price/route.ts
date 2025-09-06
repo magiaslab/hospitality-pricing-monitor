@@ -131,7 +131,7 @@ export async function POST(request: NextRequest) {
             competitorId: (body as Record<string, unknown>).competitorId as string | undefined,
             status: "ERROR",
             message: error instanceof Error ? error.message : "Unknown error",
-            payload: body as Record<string, unknown>,
+            payload: body as Prisma.InputJsonValue,
           }
         }).catch(console.error)
       }
