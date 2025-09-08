@@ -22,7 +22,9 @@ import {
   ChevronRight, 
   Check,
   Plus,
-  Trash2
+  Trash2,
+  Users,
+  ExternalLink
 } from "lucide-react"
 import { createPropertySchema } from "@/lib/validations"
 
@@ -55,6 +57,12 @@ const roomTypeSchema = z.object({
   capacity: z.number().int().min(1).optional(),
 })
 
+const competitorSchema = z.object({
+  name: z.string().min(1, "Nome richiesto"),
+  bookingUrl: z.string().url("URL non valido").optional().or(z.literal("")),
+  notes: z.string().optional(),
+})
+
 interface User {
   id: string
   email: string
@@ -71,6 +79,7 @@ export function PropertyWizard({ users }: PropertyWizardProps) {
   const [currentStep, setCurrentStep] = useState(0)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [roomTypes, setRoomTypes] = useState<Array<{ name: string; code?: string; capacity?: number }>>([])
+  const [competitors, setCompetitors] = useState<Array<{ name: string; bookingUrl?: string; notes?: string }>>([])
 
   const form = useForm<z.infer<typeof createPropertySchema>>({
     resolver: zodResolver(createPropertySchema),
@@ -111,6 +120,12 @@ export function PropertyWizard({ users }: PropertyWizardProps) {
       title: "Tipologie Camere",
       description: "Configura le tipologie di camera",
       icon: Settings,
+    },
+    {
+      id: "competitors",
+      title: "Competitor",
+      description: "Aggiungi competitor da monitorare",
+      icon: Users,
     },
     {
       id: "scraping",
@@ -171,6 +186,20 @@ export function PropertyWizard({ users }: PropertyWizardProps) {
     setRoomTypes(updated)
   }
 
+  const addCompetitor = () => {
+    setCompetitors([...competitors, { name: "", bookingUrl: "", notes: "" }])
+  }
+
+  const removeCompetitor = (index: number) => {
+    setCompetitors(competitors.filter((_, i) => i !== index))
+  }
+
+  const updateCompetitor = (index: number, field: string, value: string) => {
+    const updated = [...competitors]
+    updated[index] = { ...updated[index], [field]: value }
+    setCompetitors(updated)
+  }
+
   const onSubmit = async (values: z.infer<typeof createPropertySchema>) => {
     setIsSubmitting(true)
     try {
@@ -196,6 +225,21 @@ export function PropertyWizard({ users }: PropertyWizardProps) {
                 }),
               })
             )
+          )
+        }
+
+        // Crea competitor se presenti
+        if (competitors.length > 0) {
+          await Promise.all(
+            competitors
+              .filter(competitor => competitor.name.trim()) // Solo competitor con nome
+              .map(competitor =>
+                fetch(`/api/properties/${property.id}/competitors`, {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify(competitor),
+                })
+              )
           )
         }
 
@@ -542,8 +586,109 @@ export function PropertyWizard({ users }: PropertyWizardProps) {
                 </div>
               )}
 
-              {/* Step 4: Scraping Config */}
+              {/* Step 4: Competitors */}
               {currentStep === 3 && (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="text-lg font-medium">Competitor da Monitorare</h3>
+                      <p className="text-sm text-muted-foreground">
+                        Aggiungi i competitor per il monitoraggio automatico dei prezzi
+                      </p>
+                    </div>
+                    <Button type="button" onClick={addCompetitor}>
+                      <Plus className="w-4 h-4 mr-2" />
+                      Aggiungi
+                    </Button>
+                  </div>
+
+                  {competitors.length === 0 ? (
+                    <div className="text-center py-8 text-muted-foreground">
+                      <Users className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                      <p>Nessun competitor configurato</p>
+                      <p className="text-sm">Clicca "Aggiungi" per iniziare</p>
+                      <p className="text-xs mt-2 italic">
+                        Puoi sempre aggiungere competitor dopo aver creato la struttura
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-4">
+                      {competitors.map((competitor, index) => (
+                        <Card key={index}>
+                          <CardContent className="pt-4">
+                            <div className="grid gap-4">
+                              <div className="grid gap-4 md:grid-cols-2">
+                                <div>
+                                  <label className="text-sm font-medium">Nome Competitor *</label>
+                                  <Input
+                                    placeholder="Hotel Competitor"
+                                    value={competitor.name}
+                                    onChange={(e) => updateCompetitor(index, "name", e.target.value)}
+                                  />
+                                </div>
+                                <div className="flex gap-2">
+                                  <div className="flex-1">
+                                    <label className="text-sm font-medium">URL Booking</label>
+                                    <Input
+                                      placeholder="https://www.booking.com/hotel/..."
+                                      value={competitor.bookingUrl}
+                                      onChange={(e) => updateCompetitor(index, "bookingUrl", e.target.value)}
+                                    />
+                                  </div>
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    className="mt-6"
+                                    onClick={() => removeCompetitor(index)}
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </Button>
+                                </div>
+                              </div>
+                              <div>
+                                <label className="text-sm font-medium">Note</label>
+                                <Textarea
+                                  placeholder="Note aggiuntive sul competitor..."
+                                  value={competitor.notes}
+                                  onChange={(e) => updateCompetitor(index, "notes", e.target.value)}
+                                  rows={2}
+                                />
+                              </div>
+                              {competitor.bookingUrl && (
+                                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                  <ExternalLink className="h-3 w-3" />
+                                  <a 
+                                    href={competitor.bookingUrl} 
+                                    target="_blank" 
+                                    rel="noopener noreferrer"
+                                    className="hover:underline"
+                                  >
+                                    Verifica URL
+                                  </a>
+                                </div>
+                              )}
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  )}
+
+                  <div className="bg-muted/50 p-4 rounded-lg">
+                    <h4 className="font-medium mb-2">💡 Suggerimenti</h4>
+                    <ul className="text-sm text-muted-foreground space-y-1">
+                      <li>• Usa URL diretti alla pagina della struttura competitor</li>
+                      <li>• Supportiamo Booking.com, Expedia e altri siti OTA</li>
+                      <li>• I competitor verranno monitorati automaticamente secondo la frequenza impostata</li>
+                      <li>• Puoi sempre modificare o aggiungere competitor dopo la creazione</li>
+                    </ul>
+                  </div>
+                </div>
+              )}
+
+              {/* Step 5: Scraping Config */}
+              {currentStep === 4 && (
                 <div className="grid gap-4 md:grid-cols-2">
                   <FormField
                     control={form.control}
@@ -623,16 +768,17 @@ export function PropertyWizard({ users }: PropertyWizardProps) {
                 </div>
               )}
 
-              {/* Step 5: Review */}
-              {currentStep === 4 && (
+              {/* Step 6: Review */}
+              {currentStep === 5 && (
                 <div className="space-y-6">
                   <h3 className="text-lg font-medium">Riepilogo Configurazione</h3>
                   
                   <Tabs defaultValue="basic" className="w-full">
-                    <TabsList className="grid w-full grid-cols-4">
+                    <TabsList className="grid w-full grid-cols-5">
                       <TabsTrigger value="basic">Base</TabsTrigger>
                       <TabsTrigger value="branding">Branding</TabsTrigger>
                       <TabsTrigger value="rooms">Camere</TabsTrigger>
+                      <TabsTrigger value="competitors">Competitor</TabsTrigger>
                       <TabsTrigger value="scraping">Scraping</TabsTrigger>
                     </TabsList>
                     
@@ -669,6 +815,32 @@ export function PropertyWizard({ users }: PropertyWizardProps) {
                               <span><strong>{room.name}</strong></span>
                               {room.code && <Badge variant="secondary">{room.code}</Badge>}
                               {room.capacity && <span className="text-sm text-muted-foreground">Capacità: {room.capacity}</span>}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </TabsContent>
+                    
+                    <TabsContent value="competitors" className="space-y-4">
+                      {competitors.length === 0 ? (
+                        <p className="text-muted-foreground">Nessun competitor configurato</p>
+                      ) : (
+                        <div className="space-y-2">
+                          {competitors.map((competitor, index) => (
+                            <div key={index} className="p-3 border rounded space-y-2">
+                              <div className="flex items-center gap-2">
+                                <span><strong>{competitor.name}</strong></span>
+                                <Badge variant="default">Attivo</Badge>
+                              </div>
+                              {competitor.bookingUrl && (
+                                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                  <ExternalLink className="h-3 w-3" />
+                                  <span className="truncate">{competitor.bookingUrl}</span>
+                                </div>
+                              )}
+                              {competitor.notes && (
+                                <p className="text-sm text-muted-foreground italic">{competitor.notes}</p>
+                              )}
                             </div>
                           ))}
                         </div>
