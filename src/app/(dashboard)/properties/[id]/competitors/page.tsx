@@ -2,7 +2,7 @@
 
 import { useSession } from "next-auth/react"
 import { useEffect, useState } from "react"
-import { redirect, useParams, useRouter } from "next/navigation"
+import { redirect, useParams } from "next/navigation"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { z } from "zod"
@@ -18,7 +18,6 @@ import {
   Trash2,
   ExternalLink,
   ArrowLeft,
-  Save,
   AlertTriangle
 } from "lucide-react"
 import Link from "next/link"
@@ -51,7 +50,6 @@ interface CompetitorForm {
 export default function PropertyCompetitorsPage() {
   const { data: session, status } = useSession()
   const params = useParams()
-  const router = useRouter()
   const propertyId = params.id as string
   
   const [property, setProperty] = useState<Property | null>(null)

@@ -51,17 +51,7 @@ const scrapingSchema = z.object({
   defaultLookaheadDays: z.number().int().min(1).max(365).optional(),
 })
 
-const roomTypeSchema = z.object({
-  name: z.string().min(1, "Nome richiesto"),
-  code: z.string().optional(),
-  capacity: z.number().int().min(1).optional(),
-})
-
-const competitorSchema = z.object({
-  name: z.string().min(1, "Nome richiesto"),
-  bookingUrl: z.string().url("URL non valido").optional().or(z.literal("")),
-  notes: z.string().optional(),
-})
+// Removed unused schemas - validation handled at form level
 
 interface User {
   id: string
@@ -248,9 +238,9 @@ export function PropertyWizard({ users }: PropertyWizardProps) {
         const error = await response.json()
         console.error("Error creating property:", error)
       }
-    } catch (error) {
-      console.error("Error creating property:", error)
-    } finally {
+      } catch (err) {
+        console.error("Error creating property:", err)
+      } finally {
       setIsSubmitting(false)
     }
   }
@@ -606,7 +596,7 @@ export function PropertyWizard({ users }: PropertyWizardProps) {
                     <div className="text-center py-8 text-muted-foreground">
                       <Users className="w-12 h-12 mx-auto mb-4 opacity-50" />
                       <p>Nessun competitor configurato</p>
-                      <p className="text-sm">Clicca "Aggiungi" per iniziare</p>
+                      <p className="text-sm">Clicca &quot;Aggiungi&quot; per iniziare</p>
                       <p className="text-xs mt-2 italic">
                         Puoi sempre aggiungere competitor dopo aver creato la struttura
                       </p>
