@@ -15,48 +15,47 @@ Piattaforma SaaS completa per il monitoraggio automatico dei prezzi competitor n
 
 ## 🛠️ Tech Stack
 
-- **Frontend**: Next.js 14 (App Router) + TypeScript
-- **Database**: PostgreSQL/SQLite + Prisma ORM  
+- **Frontend**: Next.js 15.5.2 (App Router) + React 19 + TypeScript
+- **Database**: Neon PostgreSQL + Prisma ORM  
 - **UI**: Tailwind CSS v4 + shadcn/ui (tema rosso)
 - **Auth**: NextAuth.js multi-ruolo
 - **Charts**: Recharts per visualizzazioni
-- **Deployment**: Vercel + Vercel Postgres
+- **Deployment**: Vercel + Neon PostgreSQL
 
 ## 📦 Setup Locale
 
-### Prerequisiti
-- Node.js 18+ (consigliato 20+)
-- PostgreSQL 14+ (opzionale, usa SQLite per sviluppo)
+### ✅ Database Configurato!
+Il progetto è già configurato con **Neon PostgreSQL** e pronto all'uso.
 
-### Installazione
-
-1. **Clone e installa dipendenze**:
+### Quick Start
 ```bash
+# 1. Clone e installa dipendenze
 git clone <repo-url>
 cd pricecip
 npm install
-```
 
-2. **Configura variabili d'ambiente**:
-```bash
-cp .env.example .env
-# Modifica .env con le tue configurazioni
-```
+# 2. Testa la connessione database
+npm run db:test
 
-3. **Setup database**:
-```bash
-npx prisma generate
-npx prisma migrate dev --name init
-```
-
-4. **Seed dati di test** (opzionale):
-```bash
-node seed.js
-```
-
-5. **Avvia sviluppo**:
-```bash
+# 3. Avvia sviluppo
 npm run dev
+```
+
+### 📚 Documentazione Completa
+Per setup avanzato, troubleshooting e guide dettagliate:
+**[📖 Vai alla Documentazione](./docs/README.md)**
+
+### Configurazione Database
+- **✅ Neon PostgreSQL** configurato e funzionante
+- **✅ Schema applicato** (11+ tabelle)
+- **✅ Dati di esempio** già inseriti
+- **✅ Branch** production e development
+
+### Comandi Utili
+```bash
+npm run db:test          # Testa connessione
+npm run db:studio        # Database browser
+npm run neon:info        # Info progetti Neon
 ```
 
 ## 🔐 Credenziali di Test

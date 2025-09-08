@@ -1,0 +1,29 @@
+# Configurazione Neon DB per PriceCip
+# Questo file può essere committato - non contiene segreti
+
+[project]
+id = "autumn-tree-00835888"
+name = "pricecip"
+region = "aws-eu-central-1"
+
+[database]
+name = "neondb"
+owner_role = "neondb_owner"
+
+[branches]
+production = "br-solitary-silence-agqlixm8"
+development = "br-snowy-rain-ags4p0jb"
+
+[settings]
+# Auto-suspend dopo 5 minuti di inattività
+auto_suspend_delay = 300
+
+# Configurazioni per development
+[development]
+branch_name = "development"
+compute_size = "0.25"
+
+# Configurazioni per production
+[production]
+branch_name = "main"
+compute_size = "0.5"

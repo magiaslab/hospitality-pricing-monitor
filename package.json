@@ -7,7 +7,17 @@
     "build": "prisma generate && next build --turbopack",
     "start": "next start",
     "lint": "eslint",
-    "postinstall": "prisma generate"
+    "postinstall": "prisma generate",
+    "db:migrate": "prisma migrate deploy",
+    "db:generate": "prisma generate",
+    "db:push": "prisma db push",
+    "db:seed": "node seed.js",
+    "db:studio": "prisma studio",
+    "db:reset": "prisma migrate reset --force",
+    "neon:setup": "node scripts/setup-neon.js",
+    "neon:info": "neonctl projects list",
+    "neon:branches": "neonctl branches list",
+    "db:test": "node scripts/test-database.js"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.10.0",
