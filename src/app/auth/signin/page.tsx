@@ -25,6 +25,8 @@ export default function SignInPage() {
     setIsLoading(true)
     setError("")
 
+    console.log("🔐 Tentativo di login con:", formData.email)
+
     try {
       const result = await signIn("credentials", {
         email: formData.email,
@@ -32,27 +34,36 @@ export default function SignInPage() {
         redirect: false,
       })
 
+      console.log("🔍 Risultato signIn:", result)
+
       if (result?.error) {
+        console.error("❌ Errore signIn:", result.error)
         setError("Credenziali non valide")
-      } else {
+      } else if (result?.ok) {
+        console.log("✅ Login riuscito, reindirizzamento...")
         router.push("/dashboard")
+      } else {
+        console.warn("⚠️ Risultato inatteso:", result)
+        setError("Errore durante l'accesso")
       }
     } catch (error) {
+      console.error("❌ Eccezione durante login:", error)
       setError("Errore durante l'accesso")
     } finally {
       setIsLoading(false)
     }
   }
 
-  const handleGoogleSignIn = async () => {
-    setIsLoading(true)
-    try {
-      await signIn("google", { callbackUrl: "/dashboard" })
-    } catch (error) {
-      setError("Errore durante l'accesso con Google")
-      setIsLoading(false)
-    }
-  }
+  // Google SignIn temporaneamente disabilitato
+  // const handleGoogleSignIn = async () => {
+  //   setIsLoading(true)
+  //   try {
+  //     await signIn("google", { callbackUrl: "/dashboard" })
+  //   } catch (error) {
+  //     setError("Errore durante l'accesso con Google")
+  //     setIsLoading(false)
+  //   }
+  // }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-background to-muted/20 p-4">
@@ -96,6 +107,7 @@ export default function SignInPage() {
                     className="pl-10"
                     value={formData.email}
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    autoComplete="email"
                     required
                   />
                 </div>
@@ -112,6 +124,7 @@ export default function SignInPage() {
                     className="pl-10"
                     value={formData.password}
                     onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                    autoComplete="current-password"
                     required
                   />
                 </div>
@@ -122,6 +135,8 @@ export default function SignInPage() {
               </Button>
             </form>
 
+            {/* Google Login temporaneamente disabilitato */}
+            {/* 
             <div className="relative">
               <div className="absolute inset-0 flex items-center">
                 <Separator className="w-full" />
@@ -159,6 +174,7 @@ export default function SignInPage() {
               </svg>
               Google
             </Button>
+            */}
 
             <div className="text-center text-sm">
               <span className="text-muted-foreground">Non hai un account? </span>
