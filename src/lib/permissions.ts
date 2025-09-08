@@ -95,17 +95,26 @@ export async function getUserProperties(userId: string) {
     })
   }
 
-  // Combina properties possedute e quelle con accesso
-  const ownedProperties = user.ownedProperties
-  const accessProperties = user.propertyAccesses.map(access => access.property)
-  
-  // Rimuovi duplicati
-  const allProperties = [...ownedProperties, ...accessProperties]
-  const uniqueProperties = allProperties.filter((property, index, self) => 
-    index === self.findIndex(p => p.id === property.id)
-  )
+  // Ottieni gli ID delle properties a cui ha accesso
+  const ownedPropertyIds = user.ownedProperties.map(p => p.id)
+  const accessPropertyIds = user.propertyAccesses.map(access => access.property.id)
+  const allPropertyIds = [...new Set([...ownedPropertyIds, ...accessPropertyIds])]
 
-  return uniqueProperties
+  // Fetch complete property data con count
+  return await prisma.property.findMany({
+    where: {
+      id: { in: allPropertyIds }
+    },
+    include: {
+      owner: true,
+      _count: {
+        select: {
+          competitors: true,
+          roomTypes: true
+        }
+      }
+    }
+  })
 }
 
 export async function canManageProperty(userId: string, propertyId: string): Promise<boolean> {
