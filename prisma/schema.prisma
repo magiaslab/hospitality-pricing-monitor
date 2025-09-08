@@ -146,6 +146,7 @@ model Competitor {
   property             Property           @relation(fields: [propertyId], references: [id])
   name                 String
   baseUrl              String             // URL principale competitor
+  notes                String?            // Note aggiuntive sul competitor
   active               Boolean            @default(true)
 
   // Optional per-integration workflow on n8n specific to the competitor
