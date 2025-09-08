@@ -31,9 +31,6 @@ export async function GET(request: NextRequest) {
     // Get active properties with their competitors and room types
     const properties = await prisma.property.findMany({
       where: {
-        // Filter by status and scraping enabled
-        ...(status !== "all" && { status }),
-        ...(scrapingEnabled && { scrapingEnabled: true }),
         competitors: {
           some: {
             active: true
@@ -49,7 +46,6 @@ export async function GET(request: NextRequest) {
           }
         },
         roomTypes: {
-          where: { active: true },
           select: {
             id: true,
             name: true,
