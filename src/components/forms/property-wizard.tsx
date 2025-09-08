@@ -142,7 +142,7 @@ export function PropertyWizard({ users }: PropertyWizardProps) {
     try {
       currentStepData.schema.parse(values)
       return true
-    } catch (error) {
+    } catch {
       // Trigger validation errors
       await form.trigger()
       return false

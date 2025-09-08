@@ -25,7 +25,7 @@ import { UserRole } from "@/generated/prisma"
 
 const competitorSchema = z.object({
   name: z.string().min(1, "Nome competitor richiesto"),
-  bookingUrl: z.string().url("URL non valido").optional().or(z.literal("")),
+  bookingUrl: z.string().optional(),
   notes: z.string().optional(),
 })
 
