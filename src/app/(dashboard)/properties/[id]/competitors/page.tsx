@@ -43,8 +43,8 @@ interface Property {
 
 interface CompetitorForm {
   name: string
-  bookingUrl: string
-  notes: string
+  bookingUrl?: string
+  notes?: string
 }
 
 export default function PropertyCompetitorsPage() {
