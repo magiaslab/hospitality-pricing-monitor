@@ -18,7 +18,10 @@ import {
   Trash2,
   ExternalLink,
   ArrowLeft,
-  AlertTriangle
+  AlertTriangle,
+  Edit,
+  Play,
+  Clock
 } from "lucide-react"
 import Link from "next/link"
 import { UserRole } from "@/generated/prisma"
@@ -56,6 +59,8 @@ export default function PropertyCompetitorsPage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [editingCompetitor, setEditingCompetitor] = useState<string | null>(null)
+  const [triggeringCompetitor, setTriggeringCompetitor] = useState<string | null>(null)
 
   const form = useForm<CompetitorForm>({
     resolver: zodResolver(competitorSchema),
@@ -106,31 +111,35 @@ export default function PropertyCompetitorsPage() {
   }, [session, status, propertyId])
 
   const onSubmit = async (values: CompetitorForm) => {
-    setSaving(true)
-    try {
-      const response = await fetch(`/api/properties/${propertyId}/competitors`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(values),
-      })
+    if (editingCompetitor) {
+      await updateCompetitor(values)
+    } else {
+      setSaving(true)
+      try {
+        const response = await fetch(`/api/properties/${propertyId}/competitors`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(values),
+        })
 
-      if (response.ok) {
-        const newCompetitor = await response.json()
-        setProperty(prev => prev ? {
-          ...prev,
-          competitors: [...prev.competitors, newCompetitor.competitor]
-        } : null)
-        
-        // Reset form
-        form.reset()
-      } else {
-        const error = await response.json()
+        if (response.ok) {
+          const newCompetitor = await response.json()
+          setProperty(prev => prev ? {
+            ...prev,
+            competitors: [...prev.competitors, newCompetitor.competitor]
+          } : null)
+          
+          // Reset form
+          form.reset()
+        } else {
+          const error = await response.json()
+          console.error("Error creating competitor:", error)
+        }
+      } catch (error) {
         console.error("Error creating competitor:", error)
+      } finally {
+        setSaving(false)
       }
-    } catch (error) {
-      console.error("Error creating competitor:", error)
-    } finally {
-      setSaving(false)
     }
   }
 
@@ -173,6 +182,80 @@ export default function PropertyCompetitorsPage() {
       }
     } catch (error) {
       console.error("Error updating competitor:", error)
+    }
+  }
+
+  const startEditingCompetitor = (competitor: Property['competitors'][0]) => {
+    setEditingCompetitor(competitor.id)
+    form.setValue('name', competitor.name)
+    form.setValue('bookingUrl', competitor.bookingUrl || '')
+    form.setValue('notes', competitor.notes || '')
+  }
+
+  const updateCompetitor = async (values: CompetitorForm) => {
+    if (!editingCompetitor) return
+    
+    setSaving(true)
+    try {
+      const response = await fetch(`/api/properties/${propertyId}/competitors/${editingCompetitor}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(values),
+      })
+
+      if (response.ok) {
+        const updatedCompetitor = await response.json()
+        setProperty(prev => prev ? {
+          ...prev,
+          competitors: prev.competitors.map(c => 
+            c.id === editingCompetitor ? { ...c, ...updatedCompetitor.competitor } : c
+          )
+        } : null)
+        
+        // Reset form and editing state
+        form.reset()
+        setEditingCompetitor(null)
+      } else {
+        const error = await response.json()
+        console.error("Error updating competitor:", error)
+      }
+    } catch (error) {
+      console.error("Error updating competitor:", error)
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const cancelEditing = () => {
+    setEditingCompetitor(null)
+    form.reset()
+  }
+
+  const triggerManualScraping = async (competitorId: string) => {
+    setTriggeringCompetitor(competitorId)
+    try {
+      const response = await fetch('/api/scraping/trigger-manual', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          propertyId: propertyId,
+          competitorId: competitorId
+        })
+      })
+
+      if (response.ok) {
+        const result = await response.json()
+        console.log('Manual scraping triggered:', result)
+        // Potresti aggiungere una notifica di successo qui
+      } else {
+        const error = await response.json()
+        console.error('Failed to trigger scraping:', error)
+        // Potresti aggiungere una notifica di errore qui
+      }
+    } catch (error) {
+      console.error('Error triggering manual scraping:', error)
+    } finally {
+      setTriggeringCompetitor(null)
     }
   }
 
@@ -235,12 +318,17 @@ export default function PropertyCompetitorsPage() {
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        {/* Add Competitor Form */}
+        {/* Add/Edit Competitor Form */}
         <Card>
           <CardHeader>
-            <CardTitle>Aggiungi Nuovo Competitor</CardTitle>
+            <CardTitle>
+              {editingCompetitor ? 'Modifica Competitor' : 'Aggiungi Nuovo Competitor'}
+            </CardTitle>
             <CardDescription>
-              Inserisci i dati del competitor da monitorare per il pricing
+              {editingCompetitor 
+                ? 'Modifica i dati del competitor selezionato'
+                : 'Inserisci i dati del competitor da monitorare per il pricing'
+              }
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -303,19 +391,40 @@ export default function PropertyCompetitorsPage() {
                   )}
                 />
 
-                <Button type="submit" disabled={saving} className="w-full">
-                  {saving ? (
-                    <>
-                      <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent mr-2" />
-                      Aggiunta...
-                    </>
-                  ) : (
-                    <>
-                      <Plus className="h-4 w-4 mr-2" />
-                      Aggiungi Competitor
-                    </>
+                <div className="flex gap-2">
+                  <Button type="submit" disabled={saving} className="flex-1">
+                    {saving ? (
+                      <>
+                        <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent mr-2" />
+                        {editingCompetitor ? 'Aggiornamento...' : 'Aggiunta...'}
+                      </>
+                    ) : (
+                      <>
+                        {editingCompetitor ? (
+                          <>
+                            <Edit className="h-4 w-4 mr-2" />
+                            Aggiorna Competitor
+                          </>
+                        ) : (
+                          <>
+                            <Plus className="h-4 w-4 mr-2" />
+                            Aggiungi Competitor
+                          </>
+                        )}
+                      </>
+                    )}
+                  </Button>
+                  {editingCompetitor && (
+                    <Button 
+                      type="button" 
+                      variant="outline" 
+                      onClick={cancelEditing}
+                      disabled={saving}
+                    >
+                      Annulla
+                    </Button>
                   )}
-                </Button>
+                </div>
               </form>
             </Form>
           </CardContent>
@@ -372,6 +481,26 @@ export default function PropertyCompetitorsPage() {
                         >
                           {competitor.isActive ? "Attivo" : "Inattivo"}
                         </Badge>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => triggerManualScraping(competitor.id)}
+                          disabled={triggeringCompetitor === competitor.id}
+                          title="Avvia scraping manuale"
+                        >
+                          {triggeringCompetitor === competitor.id ? (
+                            <Clock className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Play className="h-4 w-4" />
+                          )}
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => startEditingCompetitor(competitor)}
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
                         <Button
                           variant="outline"
                           size="sm"

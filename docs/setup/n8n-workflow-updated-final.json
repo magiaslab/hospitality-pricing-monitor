@@ -1,0 +1,521 @@
+{
+  "name": "PriceCip Price Scraper - Updated Final",
+  "active": true,
+  "tags": ["pricecip", "scraping", "hospitality"],
+  "settings": {},
+  "staticData": {},
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": "weekly",
+          "cronExpression": "0 6 * * 1"
+        }
+      },
+      "name": "Weekly Price Scraping",
+      "type": "n8n-nodes-base.cron",
+      "typeVersion": 1,
+      "position": [200, 300],
+      "id": "node-001"
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://www.pricecip.it/api/scraping/active-properties",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-N8N-Source",
+              "value": "n8n.magiaslab.com"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 30000,
+          "retry": {
+            "retry": {
+              "enabled": true,
+              "numberOfRetries": 3,
+              "delayBetweenRetries": 5000
+            }
+          }
+        }
+      },
+      "name": "Get Active Properties",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [400, 300],
+      "id": "node-002"
+    },
+    {
+      "parameters": {
+        "fieldName": "properties",
+        "batchSize": 1,
+        "options": {
+          "destinationKey": "property"
+        }
+      },
+      "name": "Split Properties Array",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 2,
+      "position": [600, 300],
+      "id": "node-003"
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://www.pricecip.it/api/properties/{{ $json.id }}/competitors?active=true&include_config=true",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-N8N-Source",
+              "value": "n8n.magiaslab.com"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 30000,
+          "retry": {
+            "retry": {
+              "enabled": true,
+              "numberOfRetries": 3,
+              "delayBetweenRetries": 5000
+            }
+          }
+        }
+      },
+      "name": "Get Property Competitors",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [800, 300],
+      "id": "node-004"
+    },
+    {
+      "parameters": {
+        "fieldName": "competitors",
+        "batchSize": 1,
+        "options": {
+          "destinationKey": "competitor"
+        }
+      },
+      "name": "Split Competitors Array",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 2,
+      "position": [1000, 300],
+      "id": "node-005"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Generate scraping dates based on property lookaheadDays\nconst property = $input.first().json.property || $input.first().json;\nconst competitor = $input.first().json.competitor || $input.first().json;\nconst lookaheadDays = property.lookaheadDays || 30;\n\n// Generate dates for the next N days\nconst dates = [];\nfor (let i = 1; i <= lookaheadDays; i++) {\n  const checkIn = new Date();\n  checkIn.setDate(checkIn.getDate() + i);\n  \n  const checkOut = new Date(checkIn);\n  checkOut.setDate(checkOut.getDate() + 1); // 1 night stay\n  \n  dates.push({\n    checkIn: checkIn.toISOString().split('T')[0],\n    checkOut: checkOut.toISOString().split('T')[0],\n    property: property,\n    competitor: competitor\n  });\n}\n\nreturn dates.map(date => ({ json: date }));"
+      },
+      "name": "Generate Scraping Dates",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1200, 300],
+      "id": "node-006"
+    },
+    {
+      "parameters": {
+        "amount": "={{ Math.floor(Math.random() * 180) + 120 }}",
+        "unit": "seconds"
+      },
+      "name": "Anti-Bot Delay",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1,
+      "position": [1400, 300],
+      "id": "node-007"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Build dynamic Booking.com URL with dates and parameters\nconst competitor = $json.competitor;\nconst checkIn = $json.checkIn;\nconst checkOut = $json.checkOut;\nconst property = $json.property;\n\n// Extract base URL from competitor.baseUrl\nlet baseUrl = competitor.baseUrl || competitor.bookingUrl;\n\nif (!baseUrl) {\n  throw new Error(`No booking URL found for competitor: ${competitor.name}`);\n}\n\n// Parse existing URL to extract hotel path\nconst url = new URL(baseUrl);\nconst hotelPath = url.pathname;\n\n// Build new URL with dynamic dates\nconst scrapingUrl = `https://www.booking.com${hotelPath}?` +\n  `checkin=${checkIn}&` +\n  `checkout=${checkOut}&` +\n  `group_adults=2&` +\n  `group_children=0&` +\n  `no_rooms=1&` +\n  `selected_currency=EUR&` +\n  `sb_price_type=total`;\n\nreturn {\n  scrapingUrl,\n  competitor,\n  property,\n  checkIn,\n  checkOut,\n  source: 'booking'\n};"
+      },
+      "name": "Build Dynamic URL",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1600, 300],
+      "id": "node-008"
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "={{ $json.scrapingUrl }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "User-Agent",
+              "value": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+            },
+            {
+              "name": "Accept",
+              "value": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8"
+            },
+            {
+              "name": "Accept-Language",
+              "value": "it-IT,it;q=0.9,en;q=0.8"
+            },
+            {
+              "name": "Accept-Encoding",
+              "value": "gzip, deflate, br"
+            },
+            {
+              "name": "DNT",
+              "value": "1"
+            },
+            {
+              "name": "Connection",
+              "value": "keep-alive"
+            },
+            {
+              "name": "Upgrade-Insecure-Requests",
+              "value": "1"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 45000,
+          "retry": {
+            "retry": {
+              "enabled": true,
+              "numberOfRetries": 2,
+              "delayBetweenRetries": 10000
+            }
+          },
+          "redirect": {
+            "redirect": {
+              "followRedirects": true,
+              "maxRedirects": 5
+            }
+          }
+        }
+      },
+      "name": "Scrape Booking Page",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [1800, 300],
+      "id": "node-009"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse Booking.com HTML for price data\nconst html = $json.data || $json.body || '';\nconst competitor = $json.competitor;\nconst property = $json.property;\nconst checkIn = $json.checkIn;\nconst checkOut = $json.checkOut;\n\nlet extractedPrice = null;\nlet confidence = 0;\nlet method = 'unknown';\n\n// Strategy 1: Euro price regex patterns\nconst euroPatterns = [\n  /€\\s*([0-9]{1,3}(?:[.,][0-9]{3})*(?:[.,][0-9]{2})?)/g,\n  /([0-9]{1,3}(?:[.,][0-9]{3})*(?:[.,][0-9]{2})?)\\s*€/g,\n  /EUR\\s*([0-9]{1,3}(?:[.,][0-9]{3})*(?:[.,][0-9]{2})?)/gi\n];\n\nfor (const pattern of euroPatterns) {\n  const matches = [...html.matchAll(pattern)];\n  if (matches.length > 0) {\n    const prices = matches.map(match => {\n      const priceStr = match[1].replace(/[.,](?=\\d{3})/g, '').replace(',', '.');\n      return parseFloat(priceStr);\n    }).filter(price => price >= 10 && price <= 5000);\n    \n    if (prices.length > 0) {\n      extractedPrice = Math.min(...prices); // Take lowest reasonable price\n      confidence = 0.8;\n      method = 'euro_regex';\n      break;\n    }\n  }\n}\n\n// Strategy 2: JSON embedded data\nif (!extractedPrice) {\n  const jsonMatches = html.match(/<script[^>]*>([^<]*(?:price|rate)[^<]*)<\\/script>/gi) || [];\n  for (const jsonMatch of jsonMatches) {\n    try {\n      const jsonContent = jsonMatch.replace(/<\\/?script[^>]*>/gi, '');\n      const priceMatch = jsonContent.match(/[\"']price[\"']\\s*:\\s*([0-9.]+)/i);\n      if (priceMatch) {\n        const price = parseFloat(priceMatch[1]);\n        if (price >= 10 && price <= 5000) {\n          extractedPrice = price;\n          confidence = 0.9;\n          method = 'json_embedded';\n          break;\n        }\n      }\n    } catch (e) {\n      // Continue to next match\n    }\n  }\n}\n\n// Strategy 3: CSS selectors (common Booking.com classes)\nif (!extractedPrice) {\n  const priceSelectors = [\n    'pricevalue',\n    'price-display__value',\n    'sr_price_wrap',\n    'totalPrice',\n    'rate-price'\n  ];\n  \n  for (const selector of priceSelectors) {\n    const regex = new RegExp(`class=[\"'][^\"']*${selector}[^\"']*[\"'][^>]*>([^<]*(?:€|EUR)[^<]*|[^<]*\\d+[^<]*)<`, 'gi');\n    const matches = [...html.matchAll(regex)];\n    \n    if (matches.length > 0) {\n      for (const match of matches) {\n        const content = match[1];\n        const priceMatch = content.match(/([0-9]{1,3}(?:[.,][0-9]{3})*(?:[.,][0-9]{2})?)/);;\n        if (priceMatch) {\n          const price = parseFloat(priceMatch[1].replace(/[.,](?=\\d{3})/g, '').replace(',', '.'));\n          if (price >= 10 && price <= 5000) {\n            extractedPrice = price;\n            confidence = 0.7;\n            method = `css_${selector}`;\n            break;\n          }\n        }\n      }\n      if (extractedPrice) break;\n    }\n  }\n}\n\n// Check availability\nconst isAvailable = !html.includes('no_availability') && \n                   !html.includes('sold_out') && \n                   !html.includes('not_available') &&\n                   extractedPrice !== null;\n\nreturn {\n  propertyId: property.id,\n  propertyName: property.name,\n  competitorId: competitor.id,\n  competitorName: competitor.name,\n  checkInDate: checkIn,\n  checkOutDate: checkOut,\n  price: extractedPrice,\n  currency: 'EUR',\n  isAvailable: isAvailable,\n  confidence: confidence,\n  extractionMethod: method,\n  scrapedAt: new Date().toISOString(),\n  source: 'booking.com',\n  rawDataLength: html.length\n};"
+      },
+      "name": "Parse Booking Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2000, 300],
+      "id": "node-010"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "condition-001",
+              "leftValue": "={{ $json.price }}",
+              "rightValue": "",
+              "operator": {
+                "type": "object",
+                "operation": "notEmpty"
+              }
+            },
+            {
+              "id": "condition-002",
+              "leftValue": "={{ $json.confidence }}",
+              "rightValue": 0.5,
+              "operator": {
+                "type": "number",
+                "operation": "gte"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "name": "Filter Valid Prices",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2,
+      "position": [2200, 300],
+      "id": "node-011"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://www.pricecip.it/api/scraping/webhook/save-price",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "X-N8N-Source",
+              "value": "n8n.magiaslab.com"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 30000,
+          "retry": {
+            "retry": {
+              "enabled": true,
+              "numberOfRetries": 2,
+              "delayBetweenRetries": 5000
+            }
+          }
+        }
+      },
+      "name": "Save to PriceCip DB",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [2400, 300],
+      "id": "node-012"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://www.pricecip.it/api/scraping/webhook/log-execution",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"workflowId\": \"{{ $workflow.id }}\",\n  \"executionId\": \"{{ $execution.id }}\",\n  \"propertyId\": \"{{ $json.propertyId }}\",\n  \"competitorId\": \"{{ $json.competitorId }}\",\n  \"status\": \"success\",\n  \"pricesCollected\": 1,\n  \"errors\": [],\n  \"executionTime\": \"{{ $execution.startTime }}\",\n  \"metadata\": {\n    \"source\": \"n8n.magiaslab.com\",\n    \"version\": \"2.0\",\n    \"confidence\": {{ $json.confidence }},\n    \"method\": \"{{ $json.extractionMethod }}\"\n  }\n}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "X-N8N-Source",
+              "value": "n8n.magiaslab.com"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "name": "Log Execution",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [2600, 300],
+      "id": "node-013"
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://www.pricecip.it/api/scraping/active-properties",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-N8N-Source",
+              "value": "n8n.magiaslab.com"
+            }
+          ]
+        }
+      },
+      "name": "Manual Trigger - Get Properties",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [200, 500],
+      "id": "node-014"
+    },
+    {
+      "parameters": {},
+      "name": "Manual Execution",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [200, 600],
+      "id": "node-015"
+    }
+  ],
+  "connections": {
+    "Weekly Price Scraping": {
+      "main": [
+        [
+          {
+            "node": "Get Active Properties",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Active Properties": {
+      "main": [
+        [
+          {
+            "node": "Split Properties Array",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Properties Array": {
+      "main": [
+        [
+          {
+            "node": "Get Property Competitors",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Property Competitors": {
+      "main": [
+        [
+          {
+            "node": "Split Competitors Array",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Competitors Array": {
+      "main": [
+        [
+          {
+            "node": "Generate Scraping Dates",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Scraping Dates": {
+      "main": [
+        [
+          {
+            "node": "Anti-Bot Delay",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Anti-Bot Delay": {
+      "main": [
+        [
+          {
+            "node": "Build Dynamic URL",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Dynamic URL": {
+      "main": [
+        [
+          {
+            "node": "Scrape Booking Page",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Scrape Booking Page": {
+      "main": [
+        [
+          {
+            "node": "Parse Booking Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Booking Data": {
+      "main": [
+        [
+          {
+            "node": "Filter Valid Prices",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter Valid Prices": {
+      "main": [
+        [
+          {
+            "node": "Save to PriceCip DB",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save to PriceCip DB": {
+      "main": [
+        [
+          {
+            "node": "Log Execution",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Manual Execution": {
+      "main": [
+        [
+          {
+            "node": "Manual Trigger - Get Properties",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Manual Trigger - Get Properties": {
+      "main": [
+        [
+          {
+            "node": "Split Properties Array",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "versionId": "final-2025"
+}
