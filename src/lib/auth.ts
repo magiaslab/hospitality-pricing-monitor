@@ -1,6 +1,6 @@
 import { NextAuthOptions } from "next-auth"
 import { PrismaAdapter } from "@auth/prisma-adapter"
-import GoogleProvider from "next-auth/providers/google"
+// import GoogleProvider from "next-auth/providers/google"
 import CredentialsProvider from "next-auth/providers/credentials"
 import bcrypt from "bcryptjs"
 import { prisma } from "@/lib/prisma"
@@ -9,10 +9,11 @@ import { UserRole } from "@/generated/prisma"
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma) as any,
   providers: [
-    GoogleProvider({
-      clientId: process.env.GOOGLE_CLIENT_ID!,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
-    }),
+    // GoogleProvider temporaneamente disabilitato
+    // GoogleProvider({
+    //   clientId: process.env.GOOGLE_CLIENT_ID!,
+    //   clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+    // }),
     CredentialsProvider({
       name: "credentials",
       credentials: {
@@ -55,23 +56,11 @@ export const authOptions: NextAuthOptions = {
     strategy: "jwt"
   },
   callbacks: {
-    async jwt({ token, user, account }) {
+    async jwt({ token, user }) {
       if (user) {
         token.role = user.role
         token.id = user.id
       }
-      
-      // Per OAuth, assegna ruolo di default se nuovo utente
-      if (account?.provider === "google" && user) {
-        const dbUser = await prisma.user.findUnique({
-          where: { email: user.email! }
-        })
-        if (dbUser) {
-          token.role = dbUser.role
-          token.id = dbUser.id
-        }
-      }
-      
       return token
     },
     async session({ session, token }) {
@@ -81,24 +70,8 @@ export const authOptions: NextAuthOptions = {
       }
       return session
     },
-    async signIn({ user, account, profile }) {
-      // Per OAuth, crea utente se non esiste
-      if (account?.provider === "google") {
-        const existingUser = await prisma.user.findUnique({
-          where: { email: user.email! }
-        })
-        
-        if (!existingUser) {
-          await prisma.user.create({
-            data: {
-              email: user.email!,
-              name: user.name,
-              image: user.image,
-              role: UserRole.VIEWER, // Ruolo di default per OAuth
-            }
-          })
-        }
-      }
+    async signIn({ user }) {
+      // Solo autenticazione con credenziali per ora
       return true
     }
   },

@@ -1,5 +1,9 @@
 # 🔑 Credenziali n8n - Setup Rapido
 
+## 🚨 IMPORTANTE: Procedura Corretta
+
+Il JSON del workflow **NON include** le credenziali per motivi di sicurezza. Devi configurarle manualmente dopo l'import.
+
 ## ✅ Credenziali da Configurare
 
 ### 1. PriceCip API Credential
@@ -25,18 +29,16 @@ Header Value: Bearer pricecip_api_secret_2024
    - **Header Value**: `Bearer pricecip_api_secret_2024`
 5. **Salva** la credenziale
 
-### Passo 2: URLs Pre-Configurate
+### Passo 2: Importa il Workflow Pulito
 
-Le URLs sono già configurate nel workflow:
-```
-✅ https://pricecip.it/api/scraping/active-properties
-✅ https://pricecip.it/api/properties/{id}/competitors  
-✅ https://pricecip.it/api/scraping/webhook/save-price
-```
-
-Non è necessario modificare nulla!
+Usa il file **`n8n-workflow-clean.json`** (non quello con "-updated"):
+1. **Copia** il contenuto di `n8n-workflow-clean.json`
+2. **In n8n**: Workflows → Import from JSON
+3. **Incolla** e clicca Import
 
 ### Passo 3: Assegna Credenziali ai Nodi
+
+⚠️ **DOPO l'import, i nodi con errore rosso hanno bisogno delle credenziali:**
 
 I seguenti nodi richiedono la credenziale `PriceCip API`:
 
@@ -44,11 +46,49 @@ I seguenti nodi richiedono la credenziale `PriceCip API`:
 2. **"Get Property Competitors"** (node-004)
 3. **"Save to PriceCip DB"** (node-011)
 
-Per ogni nodo:
-1. Clicca sul nodo
-2. **Authentication** → **Predefined Credential Type**
-3. **Credential Type** → **HTTP Header Auth**
-4. **Credential** → **PriceCip API**
+**Per ogni nodo con errore rosso**:
+
+1. **Clicca** sul nodo
+2. **Authentication** → già impostato su "Predefined Credential Type"
+3. **Credential Type** → già impostato su "HTTP Header Auth"
+4. **Credential** → **Seleziona "PriceCip API"** dal dropdown
+5. **Salva** il nodo
+
+### 🎯 Configurazione Specifica per Nodo
+
+#### Nodo "Get Active Properties"
+```
+✅ Method: GET
+✅ URL: https://pricecip.it/api/scraping/active-properties
+✅ Authentication: Predefined Credential Type
+✅ Credential Type: HTTP Header Auth
+🔴 Credential: [SELEZIONA] PriceCip API
+✅ Send Query Parameters: ON
+  - status: active
+  - scraping_enabled: true
+```
+
+#### Nodo "Get Property Competitors"
+```
+✅ Method: GET  
+✅ URL: https://pricecip.it/api/properties/{{ $json.id }}/competitors
+✅ Authentication: Predefined Credential Type
+✅ Credential Type: HTTP Header Auth
+🔴 Credential: [SELEZIONA] PriceCip API
+✅ Send Query Parameters: ON
+  - active: true
+  - include_config: true
+```
+
+#### Nodo "Save to PriceCip DB"
+```
+✅ Method: POST
+✅ URL: https://pricecip.it/api/scraping/webhook/save-price
+✅ Authentication: Predefined Credential Type
+✅ Credential Type: HTTP Header Auth
+🔴 Credential: [SELEZIONA] PriceCip API
+✅ Headers configurati automaticamente
+```
 
 ## 🌐 Variabili d'Ambiente PriceCip
 

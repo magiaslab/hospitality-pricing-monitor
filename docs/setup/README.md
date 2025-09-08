@@ -26,10 +26,15 @@ Questa cartella contiene tutti i file relativi alla configurazione del progetto 
 
 ### 📁 File di Configurazione
 
-- **[n8n-workflow-updated.json](./n8n-workflow-updated.json)**
-  - **Contenuto**: Workflow n8n aggiornato con credenziali corrette
-  - **Include**: Tutti i nodi configurati e ottimizzati
-  - **Quando usare**: Per importare il workflow completo in n8n
+- **[n8n-workflow-clean.json](./n8n-workflow-clean.json)** ⭐ **RACCOMANDATO**
+  - **Contenuto**: Workflow n8n pulito per import corretto
+  - **Include**: Tutti i nodi senza riferimenti credenziali
+  - **Quando usare**: Per importare il workflow in n8n (SEMPRE)
+
+- **[n8n-workflow-updated.json](./n8n-workflow-updated.json)** ⚠️ **SOLO RIFERIMENTO**
+  - **Contenuto**: Workflow con credenziali per documentazione
+  - **Include**: Esempio di configurazione completa
+  - **Quando usare**: Solo come riferimento, NON per import
 
 ## 🎯 Quick Reference
 

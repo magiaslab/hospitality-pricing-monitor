@@ -1,0 +1,86 @@
+{
+  "name": "PriceCip Price Scraper - Vercel Temp",
+  "active": true,
+  "tags": ["pricecip", "scraping", "hospitality", "temp"],
+  "settings": {},
+  "staticData": {},
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": "manual"
+        }
+      },
+      "name": "Manual Trigger for Testing",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [200, 300],
+      "id": "node-001"
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "https://hospitality-pricing-monitor.vercel.app/api/scraping/active-properties",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "status",
+              "value": "active"
+            },
+            {
+              "name": "scraping_enabled", 
+              "value": "true"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-N8N-Source",
+              "value": "n8n.magiaslab.com"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 30000,
+          "retry": {
+            "retry": {
+              "enabled": true,
+              "numberOfRetries": 3,
+              "delayBetweenRetries": 5000
+            }
+          }
+        }
+      },
+      "name": "Get Active Properties",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [400, 300],
+      "id": "node-002"
+    }
+  ],
+  "connections": {
+    "Manual Trigger for Testing": {
+      "main": [
+        [
+          {
+            "node": "Get Active Properties",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "versionId": "temp"
+}
