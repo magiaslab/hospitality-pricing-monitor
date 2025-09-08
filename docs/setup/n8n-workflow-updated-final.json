@@ -94,10 +94,11 @@
           "retry": {
             "retry": {
               "enabled": true,
-              "numberOfRetries": 3,
-              "delayBetweenRetries": 5000
+              "numberOfRetries": 2,
+              "delayBetweenRetries": 3000
             }
-          }
+          },
+          "ignoreHttpStatusErrors": true
         }
       },
       "name": "Get Property Competitors",
@@ -105,6 +106,52 @@
       "typeVersion": 3,
       "position": [800, 300],
       "id": "node-004"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "condition-001",
+              "leftValue": "={{ $json.success }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equal"
+              }
+            },
+            {
+              "id": "condition-002",
+              "leftValue": "={{ $json.competitors }}",
+              "rightValue": "",
+              "operator": {
+                "type": "object",
+                "operation": "notEmpty"
+              }
+            },
+            {
+              "id": "condition-003",
+              "leftValue": "={{ $json.count }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        }
+      },
+      "name": "Filter Valid Properties",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2,
+      "position": [1000, 300],
+      "id": "node-005"
     },
     {
       "parameters": {
@@ -117,8 +164,8 @@
       "name": "Split Competitors Array",
       "type": "n8n-nodes-base.splitInBatches",
       "typeVersion": 2,
-      "position": [1000, 300],
-      "id": "node-005"
+      "position": [1200, 300],
+      "id": "node-006"
     },
     {
       "parameters": {
@@ -127,8 +174,8 @@
       "name": "Generate Scraping Dates",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1200, 300],
-      "id": "node-006"
+      "position": [1400, 300],
+      "id": "node-007"
     },
     {
       "parameters": {
@@ -138,8 +185,8 @@
       "name": "Anti-Bot Delay",
       "type": "n8n-nodes-base.wait",
       "typeVersion": 1,
-      "position": [1400, 300],
-      "id": "node-007"
+      "position": [1600, 300],
+      "id": "node-008"
     },
     {
       "parameters": {
@@ -148,8 +195,8 @@
       "name": "Build Dynamic URL",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [1600, 300],
-      "id": "node-008"
+      "position": [1800, 300],
+      "id": "node-009"
     },
     {
       "parameters": {
@@ -208,8 +255,8 @@
       "name": "Scrape Booking Page",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 3,
-      "position": [1800, 300],
-      "id": "node-009"
+      "position": [2000, 300],
+      "id": "node-010"
     },
     {
       "parameters": {
@@ -218,8 +265,8 @@
       "name": "Parse Booking Data",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [2000, 300],
-      "id": "node-010"
+      "position": [2200, 300],
+      "id": "node-011"
     },
     {
       "parameters": {
@@ -395,6 +442,17 @@
       ]
     },
     "Get Property Competitors": {
+      "main": [
+        [
+          {
+            "node": "Filter Valid Properties",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter Valid Properties": {
       "main": [
         [
           {
