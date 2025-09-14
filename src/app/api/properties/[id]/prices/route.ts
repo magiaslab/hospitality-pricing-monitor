@@ -54,7 +54,7 @@ export async function GET(
     }
 
     // Costruisci filtri
-    const whereClause: any = {
+    const whereClause: Record<string, any> = {
       propertyId,
       targetDate: {
         gte: fromDate,
@@ -237,7 +237,7 @@ export async function DELETE(
     const olderThanDays = parseInt(searchParams.get("olderThanDays") || "0")
 
     // Costruisci filtri per cancellazione
-    const whereClause: any = {
+    const whereClause: Record<string, any> = {
       propertyId,
     }
 

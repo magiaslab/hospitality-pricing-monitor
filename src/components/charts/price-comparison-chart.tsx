@@ -18,7 +18,7 @@ import {
   Bar
 } from "recharts"
 import { Calendar, TrendingUp, TrendingDown, Minus, RefreshCw } from "lucide-react"
-import { format, parseISO, subDays, startOfDay } from "date-fns"
+import { format, parseISO } from "date-fns"
 import { it } from "date-fns/locale"
 
 interface PriceData {
@@ -64,7 +64,7 @@ export function PriceComparisonChart({
   const [priceData, setPriceData] = useState<PriceData[]>([])
   const [loading, setLoading] = useState(false)
   const [selectedRoomType, setSelectedRoomType] = useState<string>("all")
-  const [selectedCompetitors, setSelectedCompetitors] = useState<string[]>(
+  const [selectedCompetitors] = useState<string[]>(
     competitors.map(c => c.id)
   )
   const [dateRange, setDateRange] = useState<number>(7) // giorni
@@ -102,14 +102,14 @@ export function PriceComparisonChart({
     if (competitors.length > 0) {
       fetchPriceData()
     }
-  }, [propertyId, selectedRoomType, selectedCompetitors, dateRange])
+  }, [propertyId, selectedRoomType, selectedCompetitors, dateRange, competitors.length, fetchPriceData])
 
   // Elabora i dati per il grafico
   const processedData = () => {
     if (!priceData.length) return []
 
     // Raggruppa per data
-    const groupedByDate = priceData.reduce((acc, item) => {
+    const groupedByDate = priceData.reduce((acc: Record<string, any>, item) => {
       const date = format(parseISO(item.targetDate), "yyyy-MM-dd")
       if (!acc[date]) {
         acc[date] = { date }
@@ -123,10 +123,10 @@ export function PriceComparisonChart({
       acc[date][competitorKey].push(item.price)
 
       return acc
-    }, {} as any)
+    }, {})
 
     // Calcola media per competitor per ogni data
-    const result = Object.values(groupedByDate).map((dayData: any) => {
+    const result = Object.values(groupedByDate).map((dayData: Record<string, any>) => {
       const processed = { ...dayData }
 
       Object.keys(dayData).forEach(key => {
@@ -194,7 +194,7 @@ export function PriceComparisonChart({
   const competitorStats = getCompetitorStats()
   const activeCompetitors = competitors.filter(c => selectedCompetitors.includes(c.id))
 
-  const formatTooltip = (value: any, name: any) => {
+  const formatTooltip = (value: number, name: string) => {
     return [`€${value}`, name]
   }
 
@@ -212,7 +212,7 @@ export function PriceComparisonChart({
             Confronto Prezzi Competitor
           </CardTitle>
           <CardDescription>
-            Analizza l'andamento dei prezzi dei competitor per ottimizzare la strategia di pricing
+            Analizza l&apos;andamento dei prezzi dei competitor per ottimizzare la strategia di pricing
           </CardDescription>
         </CardHeader>
         <CardContent>

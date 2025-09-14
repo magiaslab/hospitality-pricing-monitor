@@ -5,7 +5,7 @@ import { useEffect, useState } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Building2, Users, BarChart3, Plus, TrendingUp, AlertTriangle, Edit, Trash2, Eye } from "lucide-react"
+import { Building2, Users, BarChart3, Plus, AlertTriangle, Edit, Trash2, Eye } from "lucide-react"
 import Link from "next/link"
 import { UserRole } from "@/generated/prisma"
 
