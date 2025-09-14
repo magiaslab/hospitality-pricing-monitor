@@ -5,15 +5,21 @@ import { Prisma } from "@/generated/prisma"
 
 // API Key authentication middleware
 function validateApiKey(request: NextRequest) {
+  const apiKeyHeader = request.headers.get("x-n8n-api-key")
   const authHeader = request.headers.get("authorization")
   const expectedToken = process.env.N8N_API_KEY || "pricecip_api_secret_2024"
-  
-  if (!authHeader || !authHeader.startsWith("Bearer ")) {
-    return false
+
+  // Supporta sia X-N8N-API-KEY che Authorization Bearer
+  if (apiKeyHeader) {
+    return apiKeyHeader === expectedToken
   }
-  
-  const token = authHeader.split(" ")[1]
-  return token === expectedToken
+
+  if (authHeader && authHeader.startsWith("Bearer ")) {
+    const token = authHeader.split(" ")[1]
+    return token === expectedToken
+  }
+
+  return false
 }
 
 export async function POST(request: NextRequest) {

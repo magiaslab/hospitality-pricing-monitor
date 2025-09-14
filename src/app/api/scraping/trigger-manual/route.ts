@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
     const triggerResponse = await fetch(`${n8nUrl}/api/v1/workflows/${workflowId}/execute`, {
       method: "POST",
       headers: {
-        "Authorization": `Bearer ${n8nApiKey}`,
+        "X-N8N-API-KEY": n8nApiKey,
         "Content-Type": "application/json"
       },
       body: JSON.stringify({

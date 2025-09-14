@@ -1,0 +1,136 @@
+{
+  "name": "PriceCip Test - Simple",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "manual-trigger",
+      "name": "Manual Trigger",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [120, 300]
+    },
+    {
+      "parameters": {
+        "url": "http://localhost:3000/api/scraping/active-properties",
+        "options": {
+          "timeout": 30000
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "X-N8N-API-KEY",
+              "value": "={{ $env.N8N_API_KEY }}"
+            }
+          ]
+        }
+      },
+      "id": "get-properties",
+      "name": "Get Properties",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [320, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Log della risposta per debug\nconsole.log('Response from API:', JSON.stringify(items[0].json, null, 2));\n\n// Crea dati di test per webhook\nconst testData = {\n  propertyId: \"test-property-123\",\n  competitorId: \"test-competitor-456\", \n  roomTypeId: \"test-room-789\",\n  prices: [\n    {\n      targetDate: new Date(Date.now() + 24*60*60*1000).toISOString(),\n      price: 125.50,\n      currency: \"EUR\",\n      available: true\n    },\n    {\n      targetDate: new Date(Date.now() + 2*24*60*60*1000).toISOString(),\n      price: 145.00,\n      currency: \"EUR\", \n      available: true\n    }\n  ],\n  source: \"n8n-test-workflow\",\n  metadata: {\n    testRun: true,\n    timestamp: new Date().toISOString(),\n    originalData: items[0].json\n  }\n};\n\nreturn { json: testData };"
+      },
+      "id": "prepare-test-data",
+      "name": "Prepare Test Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [520, 300]
+    },
+    {
+      "parameters": {
+        "url": "http://localhost:3000/api/webhook/n8n",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json }}",
+        "options": {
+          "timeout": 30000
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer {{ $env.N8N_API_KEY }}"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        }
+      },
+      "id": "send-webhook",
+      "name": "Send Test Webhook",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [720, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Log del risultato finale\nconst result = items[0].json;\n\nif (result.message) {\n  console.log('✅ Webhook Success:', result.message);\n  console.log('   Inserted records:', result.inserted || 0);\n} else {\n  console.log('❌ Webhook failed:', result.error || 'Unknown error');\n}\n\nreturn items;"
+      },
+      "id": "log-result",
+      "name": "Log Result",
+      "type": "n8n-nodes-base.code",\n      "typeVersion": 2,
+      "position": [920, 300]
+    }
+  ],
+  "connections": {
+    "Manual Trigger": {
+      "main": [
+        [
+          {
+            "node": "Get Properties",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Properties": {
+      "main": [
+        [
+          {
+            "node": "Prepare Test Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Test Data": {
+      "main": [
+        [
+          {
+            "node": "Send Test Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Test Webhook": {
+      "main": [
+        [
+          {
+            "node": "Log Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "versionId": "1"
+}

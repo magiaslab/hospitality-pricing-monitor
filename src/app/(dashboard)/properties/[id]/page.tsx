@@ -7,12 +7,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { 
-  Building2, 
-  MapPin, 
-  Users, 
-  BarChart3, 
-  Settings, 
+import {
+  Building2,
+  MapPin,
+  Users,
+  BarChart3,
+  Settings,
   Plus,
   ExternalLink,
   Calendar,
@@ -21,6 +21,7 @@ import {
 } from "lucide-react"
 import Link from "next/link"
 import { UserRole } from "@/generated/prisma"
+import { PriceComparisonChart } from "@/components/charts/price-comparison-chart"
 
 interface Property {
   id: string
@@ -243,6 +244,7 @@ export default function PropertyDetailPage() {
       <Tabs defaultValue="overview" className="space-y-4">
         <TabsList>
           <TabsTrigger value="overview">Panoramica</TabsTrigger>
+          <TabsTrigger value="prices">Prezzi & Analytics</TabsTrigger>
           <TabsTrigger value="rooms">Camere</TabsTrigger>
           <TabsTrigger value="competitors">Competitor</TabsTrigger>
           <TabsTrigger value="settings">Configurazione</TabsTrigger>
@@ -295,6 +297,71 @@ export default function PropertyDetailPage() {
               </CardContent>
             </Card>
           </div>
+        </TabsContent>
+
+        <TabsContent value="prices" className="space-y-4">
+          {property.competitors.length === 0 || property.roomTypes.length === 0 ? (
+            <Card>
+              <CardContent className="pt-6">
+                <div className="text-center py-8">
+                  <BarChart3 className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                  <h3 className="text-lg font-medium mb-2">Dati insufficienti per analytics</h3>
+                  <p className="text-muted-foreground mb-4">
+                    Per visualizzare i grafici dei prezzi hai bisogno di:
+                  </p>
+                  <div className="space-y-2 text-sm text-muted-foreground mb-4">
+                    <div className="flex items-center justify-center gap-2">
+                      {property.competitors.length === 0 ? (
+                        <span className="text-red-500">✗ Almeno 1 competitor configurato</span>
+                      ) : (
+                        <span className="text-green-500">✓ Competitor configurati</span>
+                      )}
+                    </div>
+                    <div className="flex items-center justify-center gap-2">
+                      {property.roomTypes.length === 0 ? (
+                        <span className="text-red-500">✗ Almeno 1 tipologia camera</span>
+                      ) : (
+                        <span className="text-green-500">✓ Tipologie camere configurate</span>
+                      )}
+                    </div>
+                    <div className="flex items-center justify-center gap-2">
+                      <span className="text-orange-500">⚠ Dati storici dai competitor</span>
+                    </div>
+                  </div>
+                  {canManage && (
+                    <div className="flex gap-2 justify-center">
+                      {property.competitors.length === 0 && (
+                        <Button asChild variant="outline">
+                          <Link href={`/properties/${property.id}/competitors`}>
+                            <Plus className="h-4 w-4 mr-2" />
+                            Aggiungi Competitor
+                          </Link>
+                        </Button>
+                      )}
+                      {property.roomTypes.length === 0 && (
+                        <Button asChild>
+                          <Link href={`/properties/${property.id}/rooms/new`}>
+                            <Plus className="h-4 w-4 mr-2" />
+                            Aggiungi Camere
+                          </Link>
+                        </Button>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          ) : (
+            <PriceComparisonChart
+              propertyId={property.id}
+              competitors={property.competitors.map(c => ({
+                id: c.id,
+                name: c.name,
+                active: c.isActive
+              }))}
+              roomTypes={property.roomTypes}
+            />
+          )}
         </TabsContent>
 
         <TabsContent value="rooms" className="space-y-4">
